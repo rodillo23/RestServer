@@ -18,21 +18,9 @@ const usuariosGet = (req = request, res = response) => {
 
 const usuariosPost = async (req = request, res) => {
 
-    const errors = validationResult(req)
-    if(!errors.isEmpty()){
-        return res.status(400).json(errors)
-    }
-
+    //obtenemos los datos del body 
     const { nombre, email, password, role } = req.body
     const usuario = new Usuario({nombre, email, password, role})
-
-    //validar que el correo no exista
-    const existeEmail = await Usuario.findOne({email})
-    if(existeEmail){
-        return res.status(400).json({
-            msg: `El email: ${email}, ya se encuentra registrado en la BD.`
-        })
-    }
 
     //encriptar password
     const salt = bcryptjs.genSaltSync()

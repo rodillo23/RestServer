@@ -1,45 +1,65 @@
 const {response, request} = require('express');
+const bcryptjs = require('bcryptjs');
+const {validationResult} = require('express-validator')
+
 const Usuario = require('../models/usuario');
 
-const usuariosGet = (req = request, res = response) => {
+const usuariosGet = async(req = request, res = response) => {
 
-    const {q, name, edad = "Not provided"} = req.query
+    const {desde = 0, limite = 5} = req.query
+    const query = {estado:true}
+
+    const [total, usuarios] = await Promise.all([
+        Usuario.count(query),
+        Usuario.find(query).skip(Number(desde)).limit(Number(limite)) 
+    ])
 
     res.json({
-        msg: 'getAPI - controller',
-        q,
-        name,
-        edad
+        total,
+        usuarios
     });
 }
 
 const usuariosPost = async (req = request, res) => {
 
-    const body = req.body
-    const usuario = new Usuario(body)
+    //obtenemos los datos del body 
+    const { nombre, email, password, role } = req.body
+    const usuario = new Usuario({nombre, email, password, role})
 
+    //encriptar password
+    const salt = bcryptjs.genSaltSync()
+    usuario.password = bcryptjs.hashSync(password, salt)
+
+    //guardar en BD
     await usuario.save()
 
     res.json({
         ok: true,
-        body
+        usuario
     });
 }
 
-const usuariosPut = (req = request, res) => {
+const usuariosPut = async(req = request, res) => {
+
     const id = req.params.id
-    console.log(id);
+    const {_id, password, google, email, ...resto} = req.body
+
+    if(password){
+        const salt = bcryptjs.genSaltSync() 
+        resto.password = bcryptjs.hashSync(password, salt)
+    }
+
+    const usuario = await Usuario.findByIdAndUpdate(id, resto, {new:true})
     
-    res.json({
-        msg: 'putAPI - controller',
-        id
-    });
+    res.json(usuario);
 }
 
-const usuariosDelete = (req, res) => {
-    res.json({
-        msg: 'deleteAPI - controller'
-    });
+const usuariosDelete = async(req, res) => {
+    const {id} = req.params
+
+    const usuario = await Usuario.findByIdAndUpdate(id, {estado: false}, {new:true})
+
+    res.json(usuario);
 }
 
 module.exports = {

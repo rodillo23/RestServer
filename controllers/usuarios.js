@@ -4,15 +4,19 @@ const {validationResult} = require('express-validator')
 
 const Usuario = require('../models/usuario');
 
-const usuariosGet = (req = request, res = response) => {
+const usuariosGet = async(req = request, res = response) => {
 
-    const {q, name, edad = "Not provided"} = req.query
+    const {desde = 0, limite = 5} = req.query
+    const query = {estado:true}
+
+    const [total, usuarios] = await Promise.all([
+        Usuario.count(query),
+        Usuario.find(query).skip(Number(desde)).limit(Number(limite)) 
+    ])
 
     res.json({
-        msg: 'getAPI - controller',
-        q,
-        name,
-        edad
+        total,
+        usuarios
     });
 }
 
@@ -35,20 +39,27 @@ const usuariosPost = async (req = request, res) => {
     });
 }
 
-const usuariosPut = (req = request, res) => {
+const usuariosPut = async(req = request, res) => {
+
     const id = req.params.id
-    console.log(id);
+    const {_id, password, google, email, ...resto} = req.body
+
+    if(password){
+        const salt = bcryptjs.genSaltSync() 
+        resto.password = bcryptjs.hashSync(password, salt)
+    }
+
+    const usuario = await Usuario.findByIdAndUpdate(id, resto, {new:true})
     
-    res.json({
-        msg: 'putAPI - controller',
-        id
-    });
+    res.json(usuario);
 }
 
-const usuariosDelete = (req, res) => {
-    res.json({
-        msg: 'deleteAPI - controller'
-    });
+const usuariosDelete = async(req, res) => {
+    const {id} = req.params
+
+    const usuario = await Usuario.findByIdAndUpdate(id, {estado: false}, {new:true})
+
+    res.json(usuario);
 }
 
 module.exports = {
